@@ -167,6 +167,13 @@ function main($path)
     if (isset($_COOKIE['timezone'])&&$_COOKIE['timezone']!='') $_SERVER['timezone'] = $_COOKIE['timezone'];
     if ($_SERVER['timezone']=='') $_SERVER['timezone'] = 0;
 
+    if (isset($_GET['WaitFunction'])) {
+        $response = WaitFunction($_GET['WaitFunction']);
+        //var_dump($response);
+        if ($response===true) return output("ok", 200);
+        elseif ($response===false) return output("", 206);
+        else return $response;
+    }
     if (getConfig('admin')=='') return install();
     if (getConfig('adminloginpage')=='') {
         $adminloginpage = 'admin';
@@ -204,13 +211,6 @@ function main($path)
             $url = path_format($_SERVER['PHP_SELF'] . '/');
             return output('<script>alert(\''.getconstStr('SetSecretsFirst').'\');</script>', 302, [ 'Location' => $url ]);
         }
-    if (isset($_GET['WaitFunction'])) {
-        $response = WaitFunction($_GET['WaitFunction']);
-        //var_dump($response);
-        if ($response===true) return output("ok", 200);
-        elseif ($response===false) return output("", 206);
-        else return $response;
-    }
 
     $_SERVER['sitename'] = getConfig('sitename');
     if (empty($_SERVER['sitename'])) $_SERVER['sitename'] = getconstStr('defaultSitename');
@@ -249,7 +249,8 @@ function main($path)
                 return output('Please visit <a href="' . $tmp . '">' . $tmp . '</a>.', 302, [ 'Location' => $tmp ]);
                 //return message('<meta http-equiv="refresh" content="2;URL='.$_SERVER['base_path'].'">Please visit from <a href="'.$_SERVER['base_path'].'">Home Page</a>.', 'Error', 404);
             }
-            $path = substr($path, strlen('/' . $_SERVER['disktag']));
+            //$path = substr($path, strlen('/' . $_SERVER['disktag']));
+            $path = splitfirst($path, $_SERVER['disktag'])[1];
             if ($_SERVER['disktag']!='') $_SERVER['base_disk_path'] = path_format($_SERVER['base_disk_path'] . '/' . $_SERVER['disktag'] . '/');
         }
     } else $_SERVER['disktag'] = $disktags[0];
@@ -302,6 +303,7 @@ function main($path)
     if ($_SERVER['ajax']) {
         if ($_GET['action']=='del_upload_cache') {
             // del '.tmp' without login. 无需登录即可删除.tmp后缀文件
+            savecache('path_' . $path1, '', $_SERVER['disktag'], 1); // clear cache.
             return $drive->del_upload_cache($path);
         }
         if ($_GET['action']=='upbigfile') {
@@ -358,7 +360,8 @@ function main($path)
     } else {
         $files = $drive->list_files($path1);
     }
-    if ($path!=='') if ( $files['type']=='folder' && substr($path, -1)!=='/' ) {
+    //if ($path!=='') 
+    if ( $files['type']=='folder' && substr($path, -1)!=='/' ) {
         $tmp = path_format($_SERVER['base_disk_path'] . $path . '/');
         return output('<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
 <html><head>
@@ -613,7 +616,7 @@ function filecache($disktag)
 {
     $dir = sys_get_temp_dir();
     if (!is_writable($dir)) {
-        $tmp = __DIR__ . '/tmp/';
+        $tmp = $_SERVER['HTTP_HOST'] . '/tmp/';
         if (file_exists($tmp)) {
             if ( is_writable($tmp) ) $dir = $tmp;
         } elseif ( mkdir($tmp) ) $dir = $tmp;
@@ -633,10 +636,10 @@ function sortConfig(&$arr)
 {
     ksort($arr);
 
-    $tags = explode('|', $arr['disktag']);
-    unset($arr['disktag']);
-    if ($tags[0]!='') {
-        foreach($tags as $tag) {
+    if (isset($arr['disktag'])) {
+        $tags = explode('|', $arr['disktag']);
+        unset($arr['disktag']);
+        foreach($tags as $tag) if (isset($arr[$tag])) {
             $disks[$tag] = $arr[$tag];
             unset($arr[$tag]);
         }
@@ -917,7 +920,7 @@ function message($message, $title = 'Message', $statusCode = 200, $wainstat = 0)
                             //setTimeout(function() { getStatus() }, 1000);
                         }
                     } else if (xhr.status==206) {
-                        errordiv.innerHTML = min + "<br>' . getconstStr('Wait') . '" + x;
+                        errordiv.innerHTML = "' . getconstStr('Wait') . '" + x + "<br>" + min;
                         setTimeout(function() { getStatus() }, 1000);
                     } else {
                         errordiv.innerHTML = "ERROR<br>" + xhr.status + "<br>" + xhr.responseText;
@@ -1207,6 +1210,7 @@ function splitfirst($str, $split)
         $tmp[0] = '';
         $tmp[1] = substr($str, $len);
     }
+    if ($tmp[1]===false) $tmp[1] = '';
     return $tmp;
 }
 
@@ -1224,6 +1228,7 @@ function splitlast($str, $split)
         $tmp[0] = '';
         $tmp[1] = substr($str, $len);
     }
+    if ($tmp[1]===false) $tmp[1] = '';
     return $tmp;
 }
 
@@ -1391,19 +1396,18 @@ function EnvOpt($needUpdate = 0)
         }
     } else return message('please login again', 'Need login', 403);
 
-    if (isset($_GET['preview'])) {
-        $preurl = $_SERVER['PHP_SELF'] . '?preview';
-    } else {
-        $preurl = path_format($_SERVER['PHP_SELF'] . '/');
-    }
     $html .= '
-<a href="' . $preurl . '">' . getconstStr('Back') . '</a><br>
+<a id="back" href="./">' . getconstStr('Back') . '</a><br>
+    <script>
+        if (location.search.indexOf("preview")>0) document.getElementById("back").href = "?preview";
+    </script>
 ';
     if ($_GET['setup']==='cmd') {
         $statusCode = 200;
         $html .= '
+OneManager DIR: ' . __DIR__ . '
 <form name="form1" method="POST" action="">
-    <input id="inputarea" name="cmd" style="width:100%" value="' . $_POST['cmd'] . '"><br>
+    <input id="inputarea" name="cmd" style="width:100%" value="' . $_POST['cmd'] . '" placeholder="ls, pwd, cat"><br>
     <input type="submit" value="post">
 </form>';
         if ($_POST['cmd']!='') {
@@ -1432,6 +1436,9 @@ output:
     }, 500);
 </script>';
         return message($html, 'Run cmd', $statusCode);
+    }
+    if ($_GET['setup']==='auth') {
+        return changeAuthKey();
     }
     if ($_GET['setup']==='platform') {
         $frame .= '
