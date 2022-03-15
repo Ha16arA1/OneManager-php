@@ -42,7 +42,7 @@
         .more-disk a:hover, .more-disk a[now]{ background-color: rgba(85,85,85,0.7); color: white; }
         .list-table{width:100%;padding:0 20px 20px 20px;border-spacing:0}
         .list-table tr{height:40px}
-        .list-table tr[data-to]:hover{background:rgba(85,85,85,0.7);color:white;}
+        .list-table tr[data-to]:hover{background:rgba(85,85,85,0.7) !important;color:white;}
         .list-table tr[data-to]:hover a{color:white}
         .list-table tr:first-child{background:rgba(245,245,245,0)}
         .list-table td,.list-table th{padding:0 10px;text-align:left}
@@ -471,7 +471,7 @@
         <div style="margin:50px">
             <a onclick="operatediv_close('login')" class="operatediv_close"><!--constStr@Close--></a>
             <center>
-                <form action="<!--IsPreview?-->admin" method="post" onsubmit="return sha1loginpass(this);">
+                <form action="<!--IsPreview?-->login=admin" method="post" onsubmit="return sha1loginpass(this);">
                     <input id="login_input" name="password1" type="password" placeholder="<!--constStr@InputPassword-->">
                     <input name="timestamp" type="hidden" value="">
                     <input type="submit" value="<!--constStr@Login-->">
@@ -483,11 +483,11 @@
     <div style="color: rgba(247,247,249,0);"><!--FootStr--></div>
 </body>
 
-<!--ListStart-->
 <!--MdRequireStart--><link rel="stylesheet" href="//unpkg.zhimg.com/github-markdown-css@3.0.1/github-markdown.css">
 <script type="text/javascript" src="//unpkg.zhimg.com/marked@0.6.2/marked.min.js"></script><!--MdRequireEnd-->
+<!--ListStart-->
 <!--GuestUploadStart--><script type="text/javascript" src="//cdn.bootcss.com/spark-md5/3.0.0/spark-md5.min.js"></script><!--GuestUploadEnd-->
-<!--AliyundriveUploadJsStart--><script src="https://cdn.jsdelivr.net/npm/js-sha1@0.6.0/src/sha1.min.js"></script><!--AliyundriveUploadJsEnd-->
+<!--AliyundriveUploadJsStart--><script src="https://www.unpkg.com/js-sha1@0.6.0/src/sha1.js"></script><!--AliyundriveUploadJsEnd-->
 <!--IsFileStart--><!--IspdfFileStart--><script src="//cdn.bootcss.com/pdf.js/2.3.200/pdf.min.js"></script><!--IspdfFileEnd--><!--IsFileEnd-->
 <!--ListEnd-->
 <script type="text/javascript">
@@ -519,13 +519,53 @@
             f.password1.value = sha1(timestamp + "" + f.password1.value);
             return true;
         } catch {
-            alert("sha1.js not loaded.");
+            //alert("sha1.js not loaded.");
+            if (confirm("sha1.js not loaded.\n\nLoad from program?")) loadjs("?jsFile=sha1.min.js");
             return false;
         }
     }
+    function loadjs(url) {
+        var xhr = new XMLHttpRequest;
+        xhr.open("GET", url);
+        xhr.onload = function(e) {
+            if (xhr.status==200) {
+                var script = document.createElement("script");
+                script.type = "text/javascript";
+                script.text = xhr.responseText;
+                document.body.appendChild(script);
+            } else {
+                console.log(xhr.response);
+            }
+        }
+        xhr.send(null);
+    }
 <!--LoginEnd-->
+<!--WriteTimezoneStart-->
+    var nowtime= new Date();
+    var timezone = 0-nowtime.getTimezoneOffset()/60;
+    var expd = new Date();
+    expd.setTime(expd.getTime()+(2*60*60*1000));
+    var expires = "expires="+expd.toGMTString();
+    document.cookie="timezone="+timezone+"; path=/; "+expires;
+    if (timezone!=<!--timezone-->) {
+        //alert('Your timezone is '+timezone+', reload local timezone.');
+        location.href=location.href;
+    }
+<!--WriteTimezoneEnd-->
+<!--HeadmdStart-->
+    var $head = document.getElementById('head');
+    if ($head) {
+        //document.getElementById('head-div').parentNode.insertBefore(document.getElementById('head-div'),document.getElementById('list-div'));
+        $head.innerHTML = marked(document.getElementById('head-md').innerText);
+    }
+<!--HeadmdEnd-->
+<!--ReadmemdStart-->
+    var $readme = document.getElementById('readme');
+    if ($readme) {
+        $readme.innerHTML = marked(document.getElementById('readme-md').innerText);
+    }
+<!--ReadmemdEnd-->
 <!--ListStart-->
-
 <!--IsFileStart-->
     var $url = document.getElementById('url');
     if ($url) {
@@ -651,19 +691,6 @@
 <!--IspdfFileEnd-->
 <!--IsFileEnd-->
 <!--IsFolderStart-->
-<!--HeadmdStart-->
-    var $head = document.getElementById('head');
-    if ($head) {
-        //document.getElementById('head-div').parentNode.insertBefore(document.getElementById('head-div'),document.getElementById('list-div'));
-        $head.innerHTML = marked(document.getElementById('head-md').innerText);
-    }
-<!--HeadmdEnd-->
-<!--ReadmemdStart-->
-    var $readme = document.getElementById('readme');
-    if ($readme) {
-        $readme.innerHTML = marked(document.getElementById('readme-md').innerText);
-    }
-<!--ReadmemdEnd-->
 <!--ShowThumbnailsStart-->
     function showthumbnails(obj) {
         images = [<!--ImgExts-->];
@@ -794,18 +821,6 @@
     }
 <!--IsNotHiddenEnd-->
 <!--IsFolderEnd-->
-<!--WriteTimezoneStart-->
-    var nowtime= new Date();
-    var timezone = 0-nowtime.getTimezoneOffset()/60;
-    var expd = new Date();
-    expd.setTime(expd.getTime()+(2*60*60*1000));
-    var expires = "expires="+expd.toGMTString();
-    document.cookie="timezone="+timezone+"; path=/; "+expires;
-    if (timezone!=<!--timezone-->) {
-        alert('Your timezone is '+timezone+', reload local timezone.');
-        location.href=location.href;
-    }
-<!--WriteTimezoneEnd-->
     function CopyAllDownloadUrl(str) {
         var tmptextarea=document.createElement('textarea');
         document.body.appendChild(tmptextarea);
@@ -1057,7 +1072,9 @@
                                 let tmpspeed = e.loaded*1000/(tmptime.getTime()-C_starttime.getTime());
                                 lastCurrentSpeed = tmpspeed;
                                 let remaintime = (totalsize-asize-e.loaded)/tmpspeed;
-                                label.innerHTML=StartStr+'<!--constStr@Upload--> ' +size_format(asize+e.loaded)+ ' / '+size_format(totalsize) + ' = ' + ((asize+e.loaded)*100/totalsize).toFixed(2) + '% <!--constStr@AverageSpeed-->:'+size_format((asize+e.loaded-newstartsize)*1000/(tmptime.getTime()-StartTime.getTime()))+'/s<br><!--constStr@CurrentSpeed--> '+size_format(tmpspeed)+'/s <!--constStr@Expect--> '+seconds2hour(remaintime.toFixed(1));
+                                let percent = ((asize+e.loaded)*100/totalsize).toFixed(2);
+                                label.parentNode.style.background = "linear-gradient(to right, rgba(0,0,0,25%) " + percent + "%, rgba(0,0,0,0%) 0%)";
+                                label.innerHTML = StartStr+'<!--constStr@Upload--> ' +size_format(asize+e.loaded)+ ' / '+size_format(totalsize) + ' = ' + percent + '% <!--constStr@AverageSpeed-->:'+size_format((asize+e.loaded-newstartsize)*1000/(tmptime.getTime()-StartTime.getTime()))+'/s<br><!--constStr@CurrentSpeed--> '+size_format(tmpspeed)+'/s <!--constStr@Expect--> '+seconds2hour(remaintime.toFixed(1));
                             }
                         }
                         var C_starttime = new Date();
@@ -1086,7 +1103,7 @@
                                 while (filename.indexOf('%2F')>0) filename = filename.replace('%2F', '/');
                                 document.getElementById('upfile_td1_'+tdnum).innerHTML='<div style="color:green"><a href="<!--base_disk_path--><!--Path-->'+filename+'?preview" id="upfile_a_'+tdnum+'" target="_blank">'+document.getElementById('upfile_td1_'+tdnum).innerHTML+'</a><br><a href="<!--base_disk_path--><!--Path-->'+filename+'" id="upfile_a1_'+tdnum+'"></a><!--constStr@UploadComplete--><button onclick="CopyAllDownloadUrl(\'#upfile_a1_'+tdnum+'\');" id="upfile_cpbt_'+tdnum+'" <!--AdminStart--> style="display:none"<!--AdminEnd--> ><!--constStr@CopyUrl--></button></div>';
                                 label.innerHTML=StartStr+MiddleStr;
-                                label.style.color='green';
+                                label.parentNode.style.background = 'rgba(0,80,0,25%)';
                                 
                                 // uploadbuttonshow();
 <!--AdminStart-->
@@ -1143,7 +1160,37 @@
                 }// else console.log(Object.keys(uploading).length);
             } else clearInterval(uploadList);
         }, 1000);
-        //getuplink(i);
+        function CalcProof(file) {
+            return new Promise(function(resolve, reject){
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", '?action=upbigfile');
+                xhr.setRequestHeader("Content-Type","application/x-www-form-urlencoded;charset=utf-8");
+                xhr.setRequestHeader('x-requested-with', 'XMLHttpRequest');
+                xhr.onload = function(e){
+                    var html;
+                    if (xhr.status==200) {
+                        //console.log(xhr.responseText);
+                        var reader1 = new FileReader();
+                        var start = Number(xhr.responseText);
+                        var end = start + 8;
+                        if (file.size<end) end = file.size;
+                        console.log(start + " ~ " + end);
+                        //reader1.readAsArrayBuffer(file.slice(start,end));
+                        //reader1.readAsBinaryString(file.slice(start,end));
+                        reader1.readAsDataURL(file.slice(start,end));
+                        reader1.onload = function(e) {
+                            var proof = this.result;
+                            proof = proof.substr(proof.indexOf('base64,')+7);
+                            resolve(proof);
+                        }
+                    } else {
+                        //console.log(xhr.status+'calc proof code\n'+xhr.responseText);
+                        reject(xhr.status+"\ncalc proof code\n"+xhr.responseText);
+                    }
+                }
+                xhr.send('CalcProof=1&filesize=' + file.size);
+            });
+        }
         function getuplink(i, r=0) {
             var file=files[i];
             var td1;
@@ -1171,6 +1218,7 @@
                 uploadbuttonshow();
                 return;
             }*/
+            
             var upbigfilename = encodeURIComponent((file.webkitRelativePath||file.name));
             uploading[upbigfilename] = [i];
             var spark = sha1.create();
@@ -1182,7 +1230,14 @@
                 var blob = file.slice(start,end);
                 reader.readAsArrayBuffer(blob);
             }
-            readblob(asize);
+            var proof_code = '';
+            CalcProof(file).then(a => {
+                proof_code = a;
+                console.log('proof: ' + proof_code);
+                readblob(asize);
+            }, e => {
+                td2.innerHTML = e;
+            });
 
             reader.onload = function(e){
                 td2.innerHTML='<!--constStr@Calculate--> SHA1: '+(asize*100/file.size).toFixed(2)+'%';
@@ -1250,7 +1305,7 @@
                                 getuplink(i);
                             }*/
                         }
-                        xhr1.send('upbigfilename='+ upbigfilename +'&filesize='+ file.size +'&filelastModified='+ file.lastModified + '&filesha1=' + filesha1 + '&chunksize=' + chunksize + '&_admin=' + localStorage.getItem("admin"));
+                        xhr1.send('upbigfilename='+ upbigfilename +'&filesize='+ file.size +'&filelastModified='+ file.lastModified + '&proof_code=' + proof_code + '&filesha1=' + filesha1 + '&chunksize=' + chunksize + '&_admin=' + localStorage.getItem("admin"));
                     }
                 }
             }
@@ -1329,7 +1384,7 @@
                             }
                             document.getElementById('upfile_td1_'+tdnum).innerHTML='<div style="color:green"><a href="<!--base_disk_path--><!--Path-->'+filename+'?preview" id="upfile_a_'+tdnum+'" target="_blank">'+document.getElementById('upfile_td1_'+tdnum).innerHTML+'</a><br><a href="<!--base_disk_path--><!--Path-->'+filename+'" id="upfile_a1_'+tdnum+'"></a><!--constStr@UploadComplete--><button onclick="CopyAllDownloadUrl(\'#upfile_a1_'+tdnum+'\');" id="upfile_cpbt_'+tdnum+'" <!--AdminStart--> style="display:none"<!--AdminEnd--> ><!--constStr@CopyUrl--></button></div>';
                             label.innerHTML=StartStr+MiddleStr;
-                            label.style.color='green';
+                            label.parentNode.style.background = 'rgba(0,80,0,25%)';
                         } else {
                             label.innerHTML= '<font color="red">' + xhr1.status + ',' + xhr1.responseText + '</font>';
                             localStorage.removeItem(filesha1);
@@ -1349,7 +1404,9 @@
                             var tmptime = new Date();
                             var tmpspeed = e.loaded*1000/(tmptime.getTime()-C_starttime.getTime());
                             var remaintime = (totalsize-asize-e.loaded)/tmpspeed;
-                            label.innerHTML=StartStr+'<!--constStr@Upload--> ' +size_format(asize+e.loaded)+ ' / '+size_format(totalsize) + ' = ' + ((asize+e.loaded)*100/totalsize).toFixed(2) + '% <!--constStr@AverageSpeed-->:'+size_format((asize+e.loaded-newstartsize)*1000/(tmptime.getTime()-StartTime.getTime()))+'/s<br><!--constStr@CurrentSpeed--> '+size_format(tmpspeed)+'/s <!--constStr@Expect--> '+seconds2hour(remaintime.toFixed(1));
+                            let percent = ((asize+e.loaded)*100/totalsize).toFixed(2);
+                            label.parentNode.style.background = "linear-gradient(to right, rgba(0,0,0,25%) " + percent + "%, rgba(0,0,0,0%) 0%)";
+                            label.innerHTML=StartStr+'<!--constStr@Upload--> ' +size_format(asize+e.loaded)+ ' / '+size_format(totalsize) + ' = ' + percent + '% <!--constStr@AverageSpeed-->:'+size_format((asize+e.loaded-newstartsize)*1000/(tmptime.getTime()-StartTime.getTime()))+'/s<br><!--constStr@CurrentSpeed--> '+size_format(tmpspeed)+'/s <!--constStr@Expect--> '+seconds2hour(remaintime.toFixed(1));
                         }
                     }
                     var C_starttime = new Date();
@@ -1400,7 +1457,7 @@
                                         }
                                         document.getElementById('upfile_td1_'+tdnum).innerHTML='<div style="color:green"><a href="<!--base_disk_path--><!--Path-->'+filename+'?preview" id="upfile_a_'+tdnum+'" target="_blank">'+document.getElementById('upfile_td1_'+tdnum).innerHTML+'</a><br><a href="<!--base_disk_path--><!--Path-->'+filename+'" id="upfile_a1_'+tdnum+'"></a><!--constStr@UploadComplete--><button onclick="CopyAllDownloadUrl(\'#upfile_a1_'+tdnum+'\');" id="upfile_cpbt_'+tdnum+'" <!--AdminStart--> style="display:none"<!--AdminEnd--> ><!--constStr@CopyUrl--></button></div>';
                                         label.innerHTML=StartStr+MiddleStr;
-                                        label.style.color='green';
+                                        label.parentNode.style.background = 'rgba(0,80,0,25%)';
                                     } else {
                                         label.innerHTML= '<font color="red">' + xhr1.status + ',' + xhr1.responseText + '</font>';
                                         localStorage.removeItem(filesha1);
@@ -1646,7 +1703,7 @@
     document.getElementById('password1').focus();
 <!--EncryptedEnd-->
 </script>
-<script src="https://cdn.jsdelivr.net/npm/ionicons@5.5.2/dist/ionicons/ionicons.js"></script>
-<!--LoginStart--><script src="https://cdn.jsdelivr.net/npm/js-sha1@0.6.0/src/sha1.min.js"></script><!--LoginEnd-->
+<script src="https://www.unpkg.com/ionicons@6.0.1/dist/ionicons.js"></script>
+<!--LoginStart--><script src="https://www.unpkg.com/js-sha1@0.6.0/src/sha1.js"></script><!--LoginEnd-->
 <!--customScript-->
 </html>
